@@ -1,0 +1,31 @@
+#df is your pandas dataframe containing the seismic data (named "seismic" if you used my data loading code)
+#attr is the dimension you are slicing along e.g. "y"
+#val is the value to slice e.g. "1840"
+#survey is the year you want to cluster e.g. "94"
+
+def slicer(df, attr, val, survey = "94"):
+    if attr in df.columns:
+        df_slice = df.loc[df[attr] == val]
+    else:
+        df_slice = df
+    if attr == "z":
+        return df_slice.pivot(index = "y", columns = "x", values = survey)
+    elif attr == "x":
+        return df_slice.pivot(index = "z", columns = "y", values = survey)
+    elif attr == "y":
+        return df_slice.pivot(index = "z", columns = "x", values = survey)
+    else:
+        raise Exception("attribute not recognised")
+   
+   
+def KM_cluster_1d(df, attr, val, clusters):
+    sliced = slicer(df, attr, val).stack()
+    index_names = sliced.index.names
+    vals = sliced.reset_index().values.tolist()
+    
+    clusters = KM(n_clusters = clusters).fit_predict(np.array(vals)[:,2].reshape(-1, 1))
+    
+    for sublist, value in zip(vals, clusters):
+        sublist.append(value)
+            
+    return slicer(pd.DataFrame(vals, columns = [index_names[0], index_names[1], "data", "cluster"]), attr, val, z = "cluster")
